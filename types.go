@@ -119,16 +119,21 @@ type Stats struct {
 	ActiveChannels  int                     `json:"activeChannels"`
 }
 
+type HeartbeatPayload struct {
+	Type string `json:"type"`
+}
+
 // Internal message types for WebSocket communication
 type wsMessage struct {
-	Type       string        `json:"type"`
-	Channel    string        `json:"channel,omitempty"`
-	Message    interface{}   `json:"message,omitempty"`
-	Data       interface{}   `json:"data,omitempty"`
-	Timestamp  FlexibleInt64 `json:"timestamp,omitempty"`
-	Offset     FlexibleInt64 `json:"offset,omitempty"`
-	Replay     bool          `json:"replay,omitempty"`
-	APIKey     string        `json:"apiKey,omitempty"`
-	FromOffset FlexibleInt64 `json:"fromOffset,omitempty"`
-	Error      string        `json:"error,omitempty"`
+	Type       string        			`json:"type"`
+	Channel    string        			`json:"channel,omitempty"`
+	Message    interface{}   			`json:"message,omitempty"`
+	Data       interface{}   			`json:"data,omitempty"`
+	Timestamp  FlexibleInt64 			`json:"timestamp,omitempty"`
+	Offset     FlexibleInt64 			`json:"offset,omitempty"`
+	Replay     bool          			`json:"replay,omitempty"`
+	APIKey     string        			`json:"apiKey,omitempty"`
+	FromOffset FlexibleInt64 			`json:"fromOffset,omitempty"`
+	Error      string        			`json:"error,omitempty"`
+	Payload		 *HeartbeatPayload	`json:"payload,omitempty"`
 }

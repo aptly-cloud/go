@@ -35,6 +35,7 @@ type Connection struct {
 	authPromise         chan error
 	done                chan struct{}
 	readDone            chan struct{}
+	lastPingTime				*time.Time
 }
 
 type queuedMessage struct {
@@ -149,8 +150,6 @@ func (c *Connection) attemptConnection() error {
 
 	c.setState(StateConnected)
 
-	// Start heartbeat
-	c.startHeartbeat()
 
 	// Flush queued messages
 	c.flushMessageQueue()
@@ -436,10 +435,7 @@ func (c *Connection) handleAuthMessage(msg wsMessage) {
 		}
 
 	case "heartbeat":
-		now := time.Now()
-		c.mu.Lock()
-		c.lastPongTime = &now
-		c.mu.Unlock()
+		c.handleReceiveHeartbeat()
 	}
 }
 
@@ -529,60 +525,17 @@ func (c *Connection) flushMessageQueue() {
 	}
 }
 
-// startHeartbeat starts the heartbeat monitoring
-func (c *Connection) startHeartbeat() {
-	c.mu.Lock()
-	if c.stopHeartbeat != nil {
-		close(c.stopHeartbeat)
-	}
-	c.stopHeartbeat = make(chan struct{})
-	stopChan := c.stopHeartbeat
+func (c *Connection) handleReceiveHeartbeat() {
 	now := time.Now()
-	c.lastPongTime = &now
-	c.mu.Unlock()
+	c.lastPingTime = &now
 
-	ticker := time.NewTicker(c.heartbeatInterval)
-
-	go func() {
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				if !c.IsConnected() {
-					return
-				}
-
-				// Check for heartbeat timeout
-				c.mu.RLock()
-				lastPong := c.lastPongTime
-				c.mu.RUnlock()
-
-				if lastPong != nil && time.Since(*lastPong) > c.heartbeatInterval*2 {
-					c.logger.Warn("Heartbeat timeout detected, closing connection")
-					c.mu.RLock()
-					ws := c.ws
-					c.mu.RUnlock()
-					if ws != nil {
-						ws.Close()
-					}
-					return
-				}
-
-				// Send heartbeat
-				c.Send(wsMessage{
-					Type:      "heartbeat",
-					Timestamp: FlexibleInt64(time.Now().UnixMilli()),
-				})
-
-			case <-stopChan:
-				return
-
-			case <-c.done:
-				return
-			}
-		}
-	}()
+	// Send heartbeat
+	c.Send(wsMessage{
+		Type: "heartbeat",
+		Payload: &HeartbeatPayload{
+			Type: "response",
+		},
+	})
 }
 
 // generateClientID generates a unique client ID
